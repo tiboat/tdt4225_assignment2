@@ -10,26 +10,41 @@ class Queries:
         self.db_connection = self.connection.db_connection
         self.cursor = self.connection.cursor
 
-    def query_1(
-        self, table_name_users, table_name_activities, table_name_trackpoints
-    ):
+    def query_1(self):
         """
         How many users, activities and trackpoints are there in the dataset (after it is inserted into the database).
         """
-        query = (
-            "SELECT UserCount.NumUsers, ActivitiesCount.NumActivities, TrackpointCount.NumTrackpoints FROM "
-            "(SELECT COUNT(*) as NumUsers FROM %s) AS UserCount,"
-            "(SELECT COUNT(*) as NumActivities FROM %s) AS ActivitiesCount,"
-            "(SELECT COUNT(*) as NumTrackpoints FROM %s) AS TrackpointCount"
+
+        query_user = (
+            """ 
+            (SELECT COUNT(*) AS NbOfUsers FROM User)
+            """
         )
 
-        self.cursor.execute(
-            query % (table_name_users, table_name_activities,
-                     table_name_trackpoints)
+        query_activity = (
+            """ 
+            (SELECT COUNT(*) AS NbOfActivities FROM Activity)
+            """
         )
+
+        query_trackpoint = (
+            """ 
+            (SELECT COUNT(*) AS NbOfTrackPoints FROM TrackPoint)
+            """
+        )
+
+        self.cursor.execute(query_user)
         rows = self.cursor.fetchall()
         print(tabulate(rows, headers=self.cursor.column_names))
-        return rows
+
+        self.cursor.execute(query_activity)
+        rows = self.cursor.fetchall()
+        print(tabulate(rows, headers=self.cursor.column_names))
+
+        self.cursor.execute(query_trackpoint)
+        rows = self.cursor.fetchall()
+        print(tabulate(rows, headers=self.cursor.column_names))
+
 
     def query_3(self):
         """
@@ -38,11 +53,15 @@ class Queries:
         query =  (
             """
             SELECT user_id, COUNT(*) as Count 
-            FROM User 
+            FROM Activity
             GROUP BY user_id 
             ORDER BY Count DESC 
             LIMIT 20 """
             )
+
+        self.cursor.execute(query)
+        rows = self.cursor.fetchall()
+        print(tabulate(rows, headers=self.cursor.column_names))
 
     def query_5(self):
         """
@@ -67,11 +86,10 @@ def main():
         program = Queries()
         print("Executing Queries: ")
 
-        _ = program.query_1(
-            table_name_users="User",
-            table_name_activities="Activity",
-            table_name_trackpoints="TrackPoint",
-        )
+        print("Query 1: ")
+        _ = program.query_1()
+        print("Query 3")
+        _ = program.query_3()
     except Exception as e:
         print("ERROR: Failed to use database:", e)
 
