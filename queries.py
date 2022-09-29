@@ -44,11 +44,41 @@ class Queries:
             LIMIT 20 """
             )
 
+    def query_4(self):
+        """
+        Find all users who have taken a taxi.
+        """
+        query =  (
+            "SELECT DISTINCT User.id, transportation_mode FROM User inner join Activity on User.id=Activity.user_id WHERE transportation_mode = 'taxi'"
+            )
+
+        self.cursor.execute(
+            query
+        )
+        rows = self.cursor.fetchall()
+        print(tabulate(rows, headers=self.cursor.column_names))
+        return rows
+
     def query_5(self):
         """
         Find all types of transportation modes and count how many activities that are tagged with these transportation mode labels.
         Do not count the rows where the mode is null.
         """
+
+    def query_6a(self):
+        """
+        Find the year with the most activities
+        """
+        query =  (
+            "SELECT EXTRACT(YEAR FROM start_date_time) AS start_year, COUNT(EXTRACT(YEAR FROM start_date_time)) AS COUNT FROM Activity GROUP BY start_year ORDER BY COUNT DESC LIMIT 1"
+            )
+
+        self.cursor.execute(
+            query
+        )
+        rows = self.cursor.fetchall()
+        print(tabulate(rows, headers=self.cursor.column_names))
+        return rows
 
     def query_7(self):
         """
@@ -72,6 +102,9 @@ def main():
             table_name_activities="Activity",
             table_name_trackpoints="TrackPoint",
         )
+
+        _ = program.query_4()
+        _ = program.query_6a()
     except Exception as e:
         print("ERROR: Failed to use database:", e)
 
