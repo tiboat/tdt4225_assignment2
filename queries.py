@@ -302,29 +302,33 @@ def main():
         program.query_1()
         print('Query 2: ')
         program.query_2()
-        print("Query 3")
+        print("Query 3: ")
         program.query_3()
         print('Query 4: ')
         program.query_4()
-        print('Query 6: ')
 
-        print("Query 5")
+
+        print("Query 5: ")
         program.query_5()
 
+        print("Query 6: ")
         program.query_6a()
         program.query_6b()
+
+
+        print("Query 7: ")
+        program.query_7()
+
         print('Query 8: ')
         program.query_8()
+
+        print("Query 9: ")
+        program.query_9()
+
         print('Query 10: ')
         program.query_10()
 
-        print("Query 7")
-        program.query_7()
-
-        print("Query 9")
-        program.query_9()
-
-        print("Query 11")
+        print("Query 11: ")
         program.query_11()
 
     except Exception as e:
