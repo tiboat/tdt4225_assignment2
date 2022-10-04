@@ -148,6 +148,29 @@ class Queries:
 
         print(distance, 'km')
 
+
+    def query_9(self):
+        """
+        Find all users who have invalid activities, and the number of invalid activities per user.
+        """
+        query = (
+            """
+            SELECT a.user_id AS "User", COUNT(DISTINCT(a.id)) as "Amount of invalid activities"
+            FROM Activity AS a INNER JOIN (
+                SELECT t1.activity_id
+                FROM TrackPoint as t1 INNER JOIN TrackPoint as t2 ON t1.activity_id = t2.activity_id AND t1.id = t2.id-1
+                WHERE TIMESTAMPDIFF(MINUTE, t1.date_time, t2.date_time) >= 5
+            ) AS InvalidTrackPoints ON a.id = InvalidTrackPoints.activity_id
+            GROUP BY a.user_id
+            ORDER BY COUNT(DISTINCT(a.id)) DESC
+            """
+        )
+
+        self.cursor.execute(query)
+        rows = self.cursor.fetchall()
+        print(tabulate(rows, headers=self.cursor.column_names))
+
+
     def query_11(self):
         """
         Find all users who have registered transportation_mode and their most used transportation_mode.
@@ -214,6 +237,9 @@ def main():
 
         print("Query 7")
         _ = program.query_7()
+
+        print("Query 9")
+        program.query_9()
 
         print("Query 11")
         _ = program.query_11()
