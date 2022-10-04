@@ -70,7 +70,12 @@ class Queries:
         Find all users who have taken a taxi.
         """
         query =  (
-            "SELECT DISTINCT User.id, transportation_mode FROM User inner join Activity on User.id=Activity.user_id WHERE transportation_mode = 'taxi'"
+            """
+            SELECT DISTINCT User.id, transportation_mode 
+            FROM User inner join Activity on User.id=Activity.user_id 
+            WHERE transportation_mode = 'taxi'
+            ORDER BY User.id
+            """
             )
 
         self.cursor.execute(
@@ -103,10 +108,35 @@ class Queries:
 
     def query_6a(self):
         """
-        Find the year with the most activities
+        Find the year with the most activities. 2008
         """
         query =  (
-            "SELECT EXTRACT(YEAR FROM start_date_time) AS start_year, COUNT(EXTRACT(YEAR FROM start_date_time)) AS COUNT FROM Activity GROUP BY start_year ORDER BY COUNT DESC LIMIT 1"
+            """
+            SELECT EXTRACT(YEAR FROM start_date_time) AS year, COUNT(id) AS NofActivities 
+            FROM Activity 
+            GROUP BY year 
+            ORDER BY NofActivities DESC LIMIT 1
+            """
+            )
+
+        self.cursor.execute(
+            query
+        )
+        rows = self.cursor.fetchall()
+        print(tabulate(rows, headers=self.cursor.column_names))
+        return rows
+
+    def query_6b(self):
+        """
+        Is this also the year with most recorded hours? yes
+        """
+        query =  (
+            """
+            SELECT EXTRACT(YEAR FROM start_date_time) AS year, SUM(TIMEDIFF(end_date_time, start_date_time)) AS RecordedHours 
+            FROM Activity 
+            GROUP BY year 
+            ORDER BY RecordedHours DESC LIMIT 1
+            """
             )
 
         self.cursor.execute(
@@ -183,6 +213,46 @@ class Queries:
             ORDER BY User.id
             """
         )
+    def query_8(self):
+        """
+        Find the top 20 users who have gained the most altitude meters.
+        """
+
+        query =  (
+            """
+            SELECT user_id, (SUM(Dif) * 0.3048) AS AltitudeGainedScaled
+            FROM (SELECT tn.activity_id, SUM(tl.altitude-tn.altitude) AS Dif FROM TrackPoint AS tn INNER JOIN TrackPoint AS tl ON tn.id=tl.id-1 WHERE tn.altitude != -777 AND tl.altitude != -777 AND tn.altitude < tl.altitude GROUP BY tn.activity_id) AS sub2, Activity
+            WHERE Activity.id = activity_id
+            GROUP BY user_id
+            ORDER BY AltitudeGainedScaled DESC LIMIT 20
+            """
+        )
+
+        self.cursor.execute(
+            query
+        )
+        rows = self.cursor.fetchall()
+        print(tabulate(rows, headers=self.cursor.column_names))
+        return rows
+
+    def query_10(self):
+        """
+        Find the users who have tracked an activity in the Forbidden City of Beijing. lat 39.916, lon 116.397
+        """
+        query =  (
+            """
+            SELECT DISTINCT user_id
+            FROM Activity INNER JOIN TrackPoint on Activity.id=TrackPoint.activity_id
+            WHERE CAST(lat as CHAR) AND CAST(lon as CHAR) AND lat LIKE '39.916%' AND lon LIKE '116.397%'
+            """
+               )
+
+        self.cursor.execute(
+            query
+        )
+        rows = self.cursor.fetchall()
+        print(tabulate(rows, headers=self.cursor.column_names))
+        return rows
 
         self.cursor.execute(query)
         rows = self.cursor.fetchall()
@@ -224,16 +294,23 @@ def main():
 
         print("Query 1: ")
         _ = program.query_1()
+        print('Query 2: ')
+        _ = program.query_2()
         print("Query 3")
         _ = program.query_3()
-
-
+        print('Query 4: ')
         _ = program.query_4()
+        print('Query 6: ')
 
         print("Query 5")
         _ = program.query_5()
 
         _ = program.query_6a()
+        _ = program.query_6b()
+        print('Query 8: ')
+        _ = program.query_8()
+        print('Query 10: ')
+        _ = program.query_10()
 
         print("Query 7")
         _ = program.query_7()
