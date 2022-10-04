@@ -2,6 +2,7 @@ from DbConnector import DbConnector
 import os
 import pandas as pd
 from tabulate import tabulate
+from haversine import haversine
 
 
 class Queries:
@@ -45,24 +46,6 @@ class Queries:
         rows = self.cursor.fetchall()
         print(tabulate(rows, headers=self.cursor.column_names))
 
-    def query_2(self):
-        """
-        Find the average number of activities per user. 140.71
-        """
-        query = (
-            #'SELECT (COUNT(Activity.id)*1.0)/(COUNT(DISTINCT user_id)*1.0) AS AvgActivitiesPerUser FROM Activity'
-            """
-            SELECT AVG(NofActivities)
-            FROM (SELECT COUNT(id) AS NofActivities FROM Activity GROUP BY user_id) as sub
-            """
-        )
-
-        self.cursor.execute(
-            query
-        )
-        rows = self.cursor.fetchall()
-        print(tabulate(rows, headers=self.cursor.column_names))
-        return rows
 
     def query_3(self):
         """
@@ -108,6 +91,20 @@ class Queries:
         Find all types of transportation modes and count how many activities that are tagged with these transportation mode labels.
         Do not count the rows where the mode is null.
         """
+        query = (
+            """
+            SELECT transportation_mode, COUNT(*) as Count
+            FROM Activity
+            WHERE transportation_mode <> 'NULL'
+            GROUP BY transportation_mode
+            ORDER BY Count DESC 
+            """
+        )
+
+        self.cursor.execute(query)
+        rows = self.cursor.fetchall()
+        print(tabulate(rows, headers=self.cursor.column_names))
+
 
     def query_6a(self):
         """
@@ -155,8 +152,42 @@ class Queries:
         """
         query = (
             """
-            SELECT lat, lon 
-            FROM Activity INNER JOIN Trackpoint 
+            SELECT lat, lon, activity_id 
+            FROM Activity INNER JOIN TrackPoint ON Activity.id = TrackPoint.activity_id
+            WHERE user_id = 112 AND transportation_mode = 'walk' AND EXTRACT(YEAR FROM date_time) = 2008
+            """
+        )
+
+        self.cursor.execute(query)
+        rows = self.cursor.fetchall()
+        previous_activity = None
+        distance = 0
+
+        for row in rows:
+            if previous_activity is None:
+                previous_activity = row[2]
+                previous_row = row[0:2]
+            current_activity_id = row[2]
+            current_row = row[0:2]
+            if previous_activity == current_activity_id:
+                distance += haversine(current_row, previous_row, unit="km")
+            else:
+                previous_activity = current_activity_id
+            previous_row = current_row
+
+
+        print(distance, 'km')
+
+    def query_11(self):
+        """
+        Find all users who have registered transportation_mode and their most used transportation_mode.
+        """
+        query = (
+            """
+            SELECT User.id, Activity.transportation_mode
+            FROM User INNER JOIN Activity ON User.id = Activity.user_id
+            WHERE transportation_mode <> 'NULL' 
+            ORDER BY User.id
             """
         )
     def query_8(self):
@@ -200,6 +231,37 @@ class Queries:
         print(tabulate(rows, headers=self.cursor.column_names))
         return rows
 
+        self.cursor.execute(query)
+        rows = self.cursor.fetchall()
+        print(tabulate(rows, headers=self.cursor.column_names))
+
+        filtered_rows = {i: rows.count(i) for i in rows}.items()
+
+        output_list = []
+        previous_item = None
+        item_to_add = None
+        for item in filtered_rows:
+            if previous_item is None:
+                previous_item = item
+            elif item[0][0] == previous_item[0][0]:
+                if item[1] > previous_item[1]:
+                    item_to_add = item[0]
+                    previous_item = item
+                else:
+                    item_to_add = previous_item[0]
+            else:
+                if item_to_add:
+                    output_list.append(item_to_add)
+                    item_to_add = item[0]
+                    previous_item = item
+        output_list.append(item_to_add)
+
+
+
+        print(tabulate(output_list, headers=self.cursor.column_names))
+
+
+
 def main():
     program = None
     try:
@@ -216,12 +278,23 @@ def main():
         print('Query 4: ')
         _ = program.query_4()
         print('Query 6: ')
+
+        print("Query 5")
+        _ = program.query_5()
+
         _ = program.query_6a()
         _ = program.query_6b()
         print('Query 8: ')
         _ = program.query_8()
         print('Query 10: ')
         _ = program.query_10()
+
+        print("Query 7")
+        _ = program.query_7()
+
+        print("Query 11")
+        _ = program.query_11()
+
     except Exception as e:
         print("ERROR: Failed to use database:", e)
 
