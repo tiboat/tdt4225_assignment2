@@ -46,7 +46,7 @@ class Queries:
 
     def query_2(self):
         """
-        Find the average number of activities per user. 140.71
+        Find the average number of activities per user.
         """
         query = (
             """
@@ -86,7 +86,7 @@ class Queries:
         """
         query =  (
             """
-            SELECT DISTINCT User.id, transportation_mode 
+            SELECT DISTINCT User.id
             FROM User inner join Activity on User.id=Activity.user_id 
             WHERE transportation_mode = 'taxi'
             ORDER BY User.id
@@ -197,11 +197,11 @@ class Queries:
 
         query =  (
             """
-            SELECT user_id, (SUM(Dif) * 0.3048) AS AltitudeGainedScaled
+            SELECT user_id, (SUM(Dif) * 0.3048) AS MetersGained
             FROM (SELECT tn.activity_id, SUM(tl.altitude-tn.altitude) AS Dif FROM TrackPoint AS tn INNER JOIN TrackPoint AS tl ON tn.id=tl.id-1 WHERE tn.altitude != -777 AND tl.altitude != -777 AND tn.altitude < tl.altitude GROUP BY tn.activity_id) AS sub2, Activity
             WHERE Activity.id = activity_id
             GROUP BY user_id
-            ORDER BY AltitudeGainedScaled DESC LIMIT 20
+            ORDER BY MetersGained DESC LIMIT 20
             """
         )
 
@@ -234,7 +234,7 @@ class Queries:
 
     def query_10(self):
         """
-        Find the users who have tracked an activity in the Forbidden City of Beijing. lat 39.916, lon 116.397
+        Find the users who have tracked an activity in the Forbidden City of Beijing.
         """
         query = (
             """
