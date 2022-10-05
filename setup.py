@@ -3,8 +3,6 @@ import os
 import pandas as pd
 from tabulate import tabulate
 
-# TODO
-#   Documentation
 
 def read_labeled_users():
     """
@@ -22,11 +20,13 @@ def read_labeled_users():
 
 def get_start_and_end_time(trackpoints):
     """
+    Returns the start and end date time of a dataframe of an activity given its dataframe of trackpoints.
+    The start time is the date and time of the first trackpoint and end time that of the last trackpoint.
 
     Args:
-        trackpoints:
+        trackpoints: dataframe of trackpoints of an activity
 
-    Returns:
+    Returns: start and end date time
 
     """
     start_time = trackpoints["date"].iloc[0] + " " + trackpoints["time"].iloc[0]
@@ -83,6 +83,9 @@ class Setup:
         self.db_connection.commit()
 
     def insert_data_in_tables(self):
+        """
+        Inserts the user, activity and trackpoint data in its corresponding tables
+        """
         activity_id = 0
         for user in os.listdir(self.root_data_dir):
             print(f"Inserting data from user {user} ...")
@@ -90,26 +93,24 @@ class Setup:
             # Add true or false value in users dictionary for whether they have labels or not
             self.insert_data_record("User", (user, self.has_label(user)))
 
-            if self.has_label(user):
-                # self.insert_user_record(user, )
+            activity_dir = os.path.join(self.root_data_dir, user + "/Trajectory/")
+            for activity in os.listdir(activity_dir):
+                trackpoints_activity = pd.read_csv(os.path.join(activity_dir, activity),
+                                                   names=["lat", "lon", "not_used", "altitude", "date_days", "date",
+                                                          "time"],
+                                                   skiprows=6)
+                # Only insert activity if it has <= 2500 trackpoints
+                if trackpoints_activity.shape[0] <= 2500:
+                    # 2. Insert activity table data
+                    start_date_time, end_date_time = get_start_and_end_time(trackpoints_activity)
+                    transportation_mode = self.get_transportation_mode(start_date_time, end_date_time, user)
+                    self.insert_data_record("Activity", (activity_id, user, transportation_mode, start_date_time,
+                                                         end_date_time))
 
-                activity_dir = os.path.join(self.root_data_dir, user + "/Trajectory/")
-                for activity in os.listdir(activity_dir):
-                    trackpoints_activity = pd.read_csv(os.path.join(activity_dir, activity),
-                                                       names=["lat", "lon", "not_used", "altitude", "date_days", "date",
-                                                              "time"],
-                                                       skiprows=6)
-                    if trackpoints_activity.shape[0] <= 2500:
-                        # 2. Insert activity table data
-                        start_date_time, end_date_time = get_start_and_end_time(trackpoints_activity)
-                        transportation_mode = self.get_transportation_mode(start_date_time, end_date_time, user)
-                        self.insert_data_record("Activity", (activity_id, user, transportation_mode, start_date_time,
-                                                             end_date_time))
+                    # 3. Insert trackpoint table data
+                    self.insert_trackpoint_records(activity_id, trackpoints_activity)
 
-                        # 3. Insert trackpoint table data
-                        self.insert_trackpoint_records(activity_id, trackpoints_activity)
-
-                    activity_id += 1
+                activity_id += 1
 
     def has_label(self, user):
         """
@@ -124,35 +125,36 @@ class Setup:
 
     def get_transportation_mode(self, start_date_time, end_date_time, user):
         """
+        Returns the transportation mode of the activity from user with start start_date_time and end end_date_time.
 
         Args:
-            start_date_time:
-            end_date_time:
-            user:
+            start_date_time: start date time of the activity
+            end_date_time: end date time of the activity
+            user: user id of the concerning user
 
-        Returns:
-
+        Returns: transportation mode ("NULL" if user has no transportation labels)
         """
         if self.has_label(user):
+            # If the user did not get processed yet, the labels still need to be read
             if user not in self.labels.keys():
                 self.add_labels_user(user)
             start_and_end_times = list(zip(self.labels[user]["start_date_time"].tolist(),
                                            self.labels[user]["end_date_time"].tolist()))
-            # TODO: figure out when to exactly give a transportation mode
 
             if (start_date_time, end_date_time) in start_and_end_times:
                 index = start_and_end_times.index((start_date_time, end_date_time))
                 return self.labels[user]["transportation_mode"].iloc[index]
 
+        # If user has no labels, return "NULL"
         return "NULL"
 
     def add_labels_user(self, user):
         """
+        Reads and adds labels from user to this object.
+        This function assumes that user has labels in the labels.txt of its directory.
 
         Args:
-            self:
-            user:
-
+            user: user id of the concerning user
         """
         label_file_path = self.root_data_dir + user + "/labels.txt"
         labels_user = pd.read_csv(label_file_path, names=["start_date_time", "end_date_time", "transportation_mode"],
@@ -164,23 +166,11 @@ class Setup:
         self.labels[user] = labels_user
 
     def insert_data_record(self, table_name, values):
-        """
-
-        Args:
-            table_name:
-            values:
-        """
         query = f"INSERT INTO {table_name} VALUES {values}"
         self.cursor.execute(query)
         self.db_connection.commit()
 
     def insert_trackpoint_records(self, activity_id, trackpoints):
-        """
-
-        Args:
-            activity_id:
-            trackpoints:
-        """
         values = ""
         for i, trackpoint in trackpoints.iterrows():
             values_record = (activity_id, trackpoint["lat"], trackpoint["lon"], trackpoint["altitude"],
@@ -222,26 +212,24 @@ def main():
         # 1. Connect to MySQL server on virtual machine
         program = Setup()
 
-        program.drop_table("TrackPoint")
-        program.drop_table("Activity")
-        program.drop_table("User")
+        # Drop tables if they already exist
+        # program.drop_table("TrackPoint")
+        # program.drop_table("Activity")
+        # program.drop_table("User")
 
         # 2. Create and define the tables User, Activity and TrackPoint
         program.create_user_table()
         program.create_activity_table()
         program.create_trackpoint_table()
 
-        # 3. Inserts the data from the Geolife dataset into the database
+        # 3. Insert the data from the Geolife dataset into the database
         program.insert_data_in_tables()
-
-        # program.show_tables()
-        # _ = program.fetch_data(table_name="TrackPoint")
 
     except Exception as e:
         print("ERROR: Failed to use database:", e)
     finally:
         if program:
-           program.connection.close_connection()
+            program.connection.close_connection()
 
 
 if __name__ == "__main__":
